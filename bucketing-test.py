@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 import logging
 import sys
+
 import redis
 
 from benchmark import benchmark
 
 logger = logging.getLogger(__name__)
 
-def main():
 
+def main():
     # configure logging
-    logging.basicConfig(format="%(asctime)s [%(name)s:%(lineno)d][%(funcName)s][%(levelname)s] %(message)s")
+    logging.basicConfig(format="%(asctime)s [%(funcName)s][%(levelname)s] %(message)s")
     logger.setLevel(logging.DEBUG)
     logging.getLogger('benchmark').setLevel(logging.DEBUG)
-
-
-    r = redis.StrictRedis(host='ziox1.home.lan', port=6379, db=1)
 
     LUA = """
     local hashname = ARGV[1]
@@ -30,7 +28,7 @@ def main():
         return tonumber(value)
     end
     """
-
+    r = redis.StrictRedis(host='ziox1.home.lan', port=6379, db=1)
     obj = r.register_script(LUA)
     logger.debug("flushdb")
     r.flushdb()
@@ -41,7 +39,7 @@ def main():
     with benchmark('bucket string'):
         for i in range(0, keys):
             code = str(i).zfill(20)
-            maxid = obj(args=['hash' + ':' + str(int(hash(code) % BUCKET_SIZE)) ,code ,'hashmax'])
+            maxid = obj(args=['hash' + ':' + str(int(hash(code) % BUCKET_SIZE)), code, 'hashmax'])
 
     logger.debug("used_memory_human : {}".format(r.info()['used_memory_human']))
     logger.debug("used_memory : {}".format(r.info()['used_memory']))
@@ -51,7 +49,7 @@ def main():
     with benchmark('bucket integer'):
         for i in range(0, keys):
             rediskey = i % ((sys.maxsize + 1) * 2)
-            maxid = obj(args=['hash' + ':' + str(int(rediskey % BUCKET_SIZE)) ,i, 'hashmax'])
+            maxid = obj(args=['hash' + ':' + str(int(rediskey % BUCKET_SIZE)), i, 'hashmax'])
 
     logger.debug("used_memory_human : {}".format(r.info()['used_memory_human']))
     logger.debug("used_memory : {}".format(r.info()['used_memory']))
