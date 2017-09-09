@@ -8,6 +8,8 @@ from benchmark import benchmark
 
 logger = logging.getLogger(__name__)
 
+BUCKET_SIZE = 50000
+KEYS = 1000000
 
 def main():
     # configure logging
@@ -33,11 +35,8 @@ def main():
     logger.debug("flushdb")
     r.flushdb()
 
-    BUCKET_SIZE = 50000
-    keys = 1000000
-
     with benchmark('bucket string'):
-        for i in range(0, keys):
+        for i in range(0, KEYS-1):
             code = str(i).zfill(20)
             maxid = obj(args=['hash' + ':' + str(int(hash(code) % BUCKET_SIZE)), code, 'hashmax'])
 
@@ -47,7 +46,7 @@ def main():
     r.flushdb()
 
     with benchmark('bucket integer'):
-        for i in range(0, keys):
+        for i in range(0, KEYS-1):
             rediskey = i % ((sys.maxsize + 1) * 2)
             maxid = obj(args=['hash' + ':' + str(int(rediskey % BUCKET_SIZE)), i, 'hashmax'])
 
@@ -57,7 +56,7 @@ def main():
     r.flushdb()
 
     with benchmark('non bucket string'):
-        for i in range(0, keys):
+        for i in range(0, KEYS-1):
             code = str(i).zfill(20)
             maxid = obj(args=['hash', code, 'hashmax'])
 
@@ -67,7 +66,7 @@ def main():
     r.flushdb()
 
     with benchmark('non bucket integer'):
-        for i in range(0, keys):
+        for i in range(0, KEYS-1):
             maxid = obj(args=['hash', i, 'hashmax'])
 
     logger.debug("used_memory_human : {}".format(r.info()['used_memory_human']))

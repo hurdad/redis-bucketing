@@ -9,7 +9,8 @@ from benchmark import benchmark
 logger = logging.getLogger(__name__)
 
 BUCKET_SIZE = 50000
-KEYS = 100000
+KEYS = 10000000
+
 
 def main():
     # configure logging
@@ -19,9 +20,10 @@ def main():
 
     # init spar
     sc = SparkContext(conf=SparkConf().setAppName(__name__))
+    quiet_logs(sc)
 
     # create rdd with sequential codes
-    rdd = sc.parallelize(range(0, KEYS)).persist()
+    rdd = sc.parallelize(range(0, KEYS-1)).repartition(16).persist()
 
     LUA = """
      local hashname = ARGV[1]
@@ -71,13 +73,13 @@ def main():
         r = redis.StrictRedis(host='ziox1.home.lan', port=6379, db=2)
         obj = r.register_script(LUA)
         r.flushdb()
-        return [obj(args=['hash', key, "maxkey"]) for key in partition]
+        return [obj(args=['hash', str(key).zfill(20), "maxkey"]) for key in partition]
 
     def non_bucket_integer_lookup(partition):
         r = redis.StrictRedis(host='ziox1.home.lan', port=6379, db=2)
         obj = r.register_script(LUA)
         r.flushdb()
-        return [obj(args=['hash', str(key).zfill(20), "maxkey"]) for key in partition]
+        return [obj(args=['hash', key, "maxkey"]) for key in partition]
 
     with benchmark('non bucket string'):
         rdd.mapPartitions(non_bucket_string_lookup).collect()
@@ -90,6 +92,12 @@ def main():
 
     logger.debug("used_memory_human : {}".format(r_driver.info()['used_memory_human']))
     logger.debug("used_memory : {}".format(r_driver.info()['used_memory']))
+
+
+def quiet_logs(sc):
+    logger = sc._jvm.org.apache.log4j
+    logger.LogManager.getLogger("org").setLevel(logger.Level.ERROR)
+    logger.LogManager.getLogger("akka").setLevel(logger.Level.ERROR)
 
 
 if __name__ == "__main__":
